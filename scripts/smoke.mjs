@@ -38,7 +38,7 @@ async function startApp(env) {
   const port = await freePort();
   const logs = [];
   const child = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "-p", String(port), "-H", "127.0.0.1"], {
-    env: { ...process.env, NEXT_TELEMETRY_DISABLED: "1", HCLOUD_TOKENS: "", HCLOUD_TOKEN: "", MCP_ACCESS_KEY: "", HCLOUD_PROJECT_IDS: "", HCLOUD_PROJECT_ID: "", ...env },
+    env: { ...process.env, NEXT_TELEMETRY_DISABLED: "1", HCLOUD_TOKENS: "", HCLOUD_TOKEN: "", MCP_ACCESS_KEY: "", HCLOUD_PROJECT_IDS: "", HCLOUD_PROJECT_ID: "", SEAL_SECRET: "", ...env },
     stdio: ["ignore", "pipe", "pipe"],
   });
   child.stdout.on("data", (d) => logs.push(String(d)));
@@ -96,6 +96,7 @@ function assertRows(tool, result) {
 
 const mock = await startMockServer();
 const KEY = randomBytes(24).toString("hex");
+const SEAL = randomBytes(32).toString("hex");
 const API = `http://127.0.0.1:${mock.port}/v1`;
 const apps = [];
 
@@ -110,6 +111,7 @@ try {
     HCLOUD_TOKENS: `personal:${MOCK_TOKENS.personal},we4water:${MOCK_TOKENS.we4water}`,
     HCLOUD_PROJECT_IDS: "personal:123456,we4water:654321",
     MCP_ACCESS_KEY: KEY,
+    SEAL_SECRET: SEAL,
     HCLOUD_API_URL: API,
   });
   apps.push(app);
@@ -122,7 +124,6 @@ try {
       `${app.base}/mcp/${KEY}x`,
       `${app.base}/mcp/short`,
       `${app.base}/mcp`,
-      `${app.base}/`,
       `${app.base}/mcp/${KEY}/extra`,
       `${app.base}/api/mcp`,
     ];
@@ -237,6 +238,75 @@ try {
     assert.ok(!result.content[0].text.includes(RATE_LIMITED_TOKEN));
   });
 
+  // Sealed URLs: projects travel encrypted in the path.
+  const sealReq = (base, projects) =>
+    fetch(`${base}/api/seal`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ projects }),
+    }).then(async (r) => ({ status: r.status, body: await r.json() }));
+  const callAt = async (u, name, args = {}) => {
+    await rpc(u, "initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "s", version: "1" } });
+    return (await rpc(u, "tools/call", { name, arguments: args }, 2, "2025-06-18")).msg.result;
+  };
+
+  await check("setup page renders with the title and explanation", async () => {
+    const r = await fetch(`${app.base}/`);
+    assert.equal(r.status, 200);
+    const html = await r.text();
+    assert.ok(html.includes("Free, easy, vibe-coded, MCP for"), "title missing");
+    assert.ok(html.includes("How it works"), "explanation missing");
+  });
+
+  let sealedUrl;
+  await check("seal: valid tokens -> URL that serves both projects", async () => {
+    const { status, body } = await sealReq(app.base, [
+      { name: "alpha", token: MOCK_TOKENS.personal, consoleId: "111" },
+      { name: "beta", token: MOCK_TOKENS.we4water },
+    ]);
+    assert.equal(status, 200, JSON.stringify(body));
+    assert.match(body.url, new RegExp(`^${app.base}/mcp/v1\\.[A-Za-z0-9_-]+$`));
+    for (const t of Object.values(MOCK_TOKENS)) assert.ok(!body.url.includes(t), "token visible in sealed URL");
+    sealedUrl = body.url;
+    const rows = assertRows("list_servers", await callAt(sealedUrl, "list_servers"));
+    assert.deepEqual([...new Set(rows.map((r) => r.project))], ["alpha", "beta"]);
+    assert.equal(rows.find((r) => r.project === "alpha").console_url, "https://console.hetzner.com/projects/111/servers/42/overview");
+    assert.equal(rows.find((r) => r.project === "beta").console_url, null);
+  });
+
+  await check("seal: same project name, different tokens -> no cache bleed", async () => {
+    const a = (await sealReq(app.base, [{ name: "personal", token: MOCK_TOKENS.personal }])).body.url;
+    const b = (await sealReq(app.base, [{ name: "personal", token: MOCK_TOKENS.we4water }])).body.url;
+    const ra = assertRows("list_servers", await callAt(a, "list_servers"));
+    const rb = assertRows("list_servers", await callAt(b, "list_servers"));
+    assert.deepEqual(ra.map((r) => r.name), ["web-1", "arm-worker", "db-1"]);
+    assert.deepEqual(rb.map((r) => r.name), ["sensor-gw"]);
+  });
+
+  await check("seal: tampered, truncated or foreign blobs -> 404", async () => {
+    const i = sealedUrl.length - 10;
+    const tampered = sealedUrl.slice(0, i) + (sealedUrl[i] === "A" ? "B" : "A") + sealedUrl.slice(i + 1);
+    for (const u of [tampered, sealedUrl.slice(0, -5), `${app.base}/mcp/v1.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA`]) {
+      const r = await fetch(u, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+      assert.equal(r.status, 404);
+    }
+  });
+
+  await check("seal: bad token -> 400 naming the project, no URL", async () => {
+    const { status, body } = await sealReq(app.base, [{ name: "oops", token: "not-a-real-token" }]);
+    assert.equal(status, 400);
+    assert.equal(body.url, undefined);
+    assert.match(body.error, /^oops: Hetzner rejected this token$/);
+  });
+
+  await check("seal: invalid input -> 400 without echoing tokens", async () => {
+    for (const projects of [[], [{ name: "Has Space", token: "tok" }], [{ name: "a", token: "x" }, { name: "a", token: "y" }]]) {
+      const { status, body } = await sealReq(app.base, projects);
+      assert.equal(status, 400, JSON.stringify(body));
+      assert.ok(!JSON.stringify(body).includes("tok"));
+    }
+  });
+
   // Legacy single-token configuration.
   const legacy = await startApp({
     HCLOUD_TOKEN: MOCK_TOKENS.we4water, HCLOUD_PROJECT_ID: "777", MCP_ACCESS_KEY: KEY, HCLOUD_API_URL: API,
@@ -251,6 +321,11 @@ try {
   // Instance with no tokens at all.
   const noToken = await startApp({ MCP_ACCESS_KEY: KEY });
   apps.push(noToken);
+  await check("no SEAL_SECRET -> seal endpoint 503", async () => {
+    const r = await fetch(`${noToken.base}/api/seal`, { method: "POST", body: "{}" });
+    assert.equal(r.status, 503);
+  });
+
   await check("no tokens configured -> clear tool error", async () => {
     const result = await callTool(noToken.base, "list_servers");
     assert.equal(result.isError, true);
