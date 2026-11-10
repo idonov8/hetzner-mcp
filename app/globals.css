@@ -47,10 +47,27 @@ main {
   padding: 56px 16px 80px;
 }
 
-.gh {
+.topbar {
   position: absolute;
   top: 18px;
   right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.commit {
+  font-size: 12px;
+  color: var(--muted);
+  text-decoration: none;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 9px;
+}
+
+a.commit:hover { color: var(--ink); background: var(--code-bg); }
+
+.gh {
   display: inline-flex;
   padding: 6px;
   border-radius: 8px;
@@ -60,7 +77,7 @@ main {
 .gh:hover { color: var(--ink); background: var(--code-bg); }
 
 h1 {
-  padding-right: 40px;
+  padding-right: 120px;
   font-size: clamp(30px, 6vw, 46px);
   line-height: 1.08;
   letter-spacing: -0.02em;
@@ -253,7 +270,8 @@ td:first-child { width: 190px; padding-right: 12px; }
 footer { margin-top: 64px; font-size: 13px; color: var(--muted); }
 
 @media (max-width: 640px) {
-  main { padding-top: 36px; }
+  main { padding-top: 64px; }
+  h1 { padding-right: 0; }
   .row { grid-template-columns: 1fr 36px; }
   .row .token, .row .cid { grid-column: 1 / -1; }
   .row .name { grid-column: 1; }
