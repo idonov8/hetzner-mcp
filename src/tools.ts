@@ -7,8 +7,9 @@ import {
   getVolumes, mapLimit,
 } from "./hetzner/client";
 import type { MetricsResponse, Server } from "./hetzner/types";
+import { parseProjectIds, parseProjects, type Project } from "./projects";
 import {
-  actionRows, allTimeseriesRows, costRows, imageRows, securityRows, serversToRows, usageRows,
+  actionRows, allTimeseriesRows, costRows, imageRows, mergeActions, securityRows, serversToRows, usageRows,
 } from "./transforms";
 
 const READ_ONLY = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true } as const;
@@ -18,12 +19,32 @@ type ToolResult = { content: Array<{ type: "text"; text: string }>; isError?: bo
 
 const ok = (rows: Row[]): ToolResult => ({ content: [{ type: "text", text: JSON.stringify({ rows }) }] });
 
-function fail(err: unknown): ToolResult {
-  const message =
-    err instanceof ConfigError || err instanceof HetznerApiError
-      ? err.message
-      : `Unexpected error: ${err instanceof Error ? err.message : String(err)}`;
-  return { content: [{ type: "text", text: message }], isError: true };
+class ProjectError extends Error {}
+
+function describe(err: unknown): string {
+  return err instanceof ConfigError || err instanceof HetznerApiError || err instanceof ProjectError
+    ? err.message
+    : `Unexpected error: ${err instanceof Error ? err.message : String(err)}`;
+}
+
+const fail = (err: unknown): ToolResult => ({ content: [{ type: "text", text: describe(err) }], isError: true });
+
+/**
+ * Runs fn for every configured project in parallel and concatenates the rows
+ * in configuration order. If any project fails, the whole call fails with an
+ * error naming that project: a silently missing project would read as
+ * "no servers". Error texts never contain tokens.
+ */
+async function forAllProjects(fn: (p: Project) => Promise<Row[]>): Promise<Row[]> {
+  const projects = parseProjects();
+  const results = await Promise.all(
+    projects.map((p) =>
+      fn(p).catch((err: unknown) => {
+        throw new ProjectError(`${p.name}: ${describe(err)}`);
+      }),
+    ),
+  );
+  return results.flat();
 }
 
 async function run(fn: () => Promise<Row[]>): Promise<ToolResult> {
@@ -39,11 +60,11 @@ async function run(fn: () => Promise<Row[]>): Promise<ToolResult> {
  * yields null metrics for that server, except auth/rate-limit/config errors,
  * which abort the whole call.
  */
-async function metricsFor(servers: Server[], window: Window): Promise<Map<number, MetricsResponse | null>> {
+async function metricsFor(p: Project, servers: Server[], window: Window): Promise<Map<number, MetricsResponse | null>> {
   const running = servers.filter((s) => s.status === "running");
   const results = await mapLimit(running, METRICS_CONCURRENCY, async (s) => {
     try {
-      return [s.id, await getServerMetrics(s.id, window)] as const;
+      return [s.id, await getServerMetrics(p, s.id, window)] as const;
     } catch (err) {
       if (err instanceof ConfigError) throw err;
       if (err instanceof HetznerApiError && [401, 403, 429].includes(err.status)) throw err;
@@ -63,14 +84,17 @@ export function registerTools(server: McpServer): void {
     "list_servers",
     {
       title: "List servers",
-      description: "All Hetzner Cloud servers with specs, location, network, protection, traffic and monthly price.",
+      description: "All servers across configured Hetzner projects with specs, location, network, protection, traffic and monthly price.",
       inputSchema: noArgs,
       annotations: READ_ONLY,
     },
     () =>
-      run(async () => {
-        const [servers, pricing] = await Promise.all([getServers(), getPricing()]);
-        return serversToRows(servers, pricing, { now: new Date(), projectId: process.env.HCLOUD_PROJECT_ID });
+      run(() => {
+        const ids = parseProjectIds();
+        return forAllProjects(async (p) => {
+          const [servers, pricing] = await Promise.all([getServers(p), getPricing(p)]);
+          return serversToRows(p.name, servers, pricing, { now: new Date(), projectId: ids.get(p.name) });
+        });
       }),
   );
 
@@ -83,10 +107,12 @@ export function registerTools(server: McpServer): void {
       annotations: READ_ONLY,
     },
     ({ window }) =>
-      run(async () => {
-        const servers = await getServers();
-        return usageRows(servers, window, await metricsFor(servers, window));
-      }),
+      run(() =>
+        forAllProjects(async (p) => {
+          const servers = await getServers(p);
+          return usageRows(p.name, servers, window, await metricsFor(p, servers, window));
+        }),
+      ),
   );
 
   server.registerTool(
@@ -98,10 +124,12 @@ export function registerTools(server: McpServer): void {
       annotations: READ_ONLY,
     },
     ({ window }) =>
-      run(async () => {
-        const servers = await getServers();
-        return allTimeseriesRows(servers, await metricsFor(servers, window));
-      }),
+      run(() =>
+        forAllProjects(async (p) => {
+          const servers = await getServers(p);
+          return allTimeseriesRows(p.name, servers, await metricsFor(p, servers, window));
+        }),
+      ),
   );
 
   server.registerTool(
@@ -116,8 +144,11 @@ export function registerTools(server: McpServer): void {
     },
     ({ limit }) =>
       run(async () => {
-        const [actions, servers] = await Promise.all([getServerActions(limit), getServers()]);
-        return actionRows(actions, servers);
+        const rows = await forAllProjects(async (p) => {
+          const [actions, servers] = await Promise.all([getServerActions(p, limit), getServers(p)]);
+          return actionRows(p.name, actions, servers);
+        });
+        return mergeActions(rows, limit);
       }),
   );
 
@@ -130,10 +161,14 @@ export function registerTools(server: McpServer): void {
       annotations: READ_ONLY,
     },
     () =>
-      run(async () => {
-        const [images, servers, pricing] = await Promise.all([getBackupAndSnapshotImages(), getServers(), getPricing()]);
-        return imageRows(images, servers, pricing, new Date());
-      }),
+      run(() =>
+        forAllProjects(async (p) => {
+          const [images, servers, pricing] = await Promise.all([
+            getBackupAndSnapshotImages(p), getServers(p), getPricing(p),
+          ]);
+          return imageRows(p.name, images, servers, pricing, new Date());
+        }),
+      ),
   );
 
   server.registerTool(
@@ -145,13 +180,15 @@ export function registerTools(server: McpServer): void {
       annotations: READ_ONLY,
     },
     () =>
-      run(async () => {
-        const [servers, volumes, primaryIps, floatingIps, images, loadBalancers, pricing] = await Promise.all([
-          getServers(), getVolumes(), getPrimaryIps(), getFloatingIps(), getBackupAndSnapshotImages(),
-          getLoadBalancers(), getPricing(),
-        ]);
-        return costRows({ servers, volumes, primaryIps, floatingIps, images, loadBalancers, pricing });
-      }),
+      run(() =>
+        forAllProjects(async (p) => {
+          const [servers, volumes, primaryIps, floatingIps, images, loadBalancers, pricing] = await Promise.all([
+            getServers(p), getVolumes(p), getPrimaryIps(p), getFloatingIps(p), getBackupAndSnapshotImages(p),
+            getLoadBalancers(p), getPricing(p),
+          ]);
+          return costRows(p.name, { servers, volumes, primaryIps, floatingIps, images, loadBalancers, pricing });
+        }),
+      ),
   );
 
   server.registerTool(
@@ -163,9 +200,11 @@ export function registerTools(server: McpServer): void {
       annotations: READ_ONLY,
     },
     () =>
-      run(async () => {
-        const [servers, firewalls] = await Promise.all([getServers(), getFirewalls()]);
-        return securityRows(servers, firewalls);
-      }),
+      run(() =>
+        forAllProjects(async (p) => {
+          const [servers, firewalls] = await Promise.all([getServers(p), getFirewalls(p)]);
+          return securityRows(p.name, servers, firewalls);
+        }),
+      ),
   );
 }

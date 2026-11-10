@@ -1,0 +1,29 @@
+{
+ "actions": [
+  {
+   "id": 20,
+   "command": "start_server",
+   "status": "success",
+   "progress": 100,
+   "started": "2026-11-09T10:00:00Z",
+   "finished": "2026-11-09T10:00:20Z",
+   "error": null,
+   "resources": [
+    {
+     "id": 77,
+     "type": "server"
+    }
+   ]
+  }
+ ],
+ "meta": {
+  "pagination": {
+   "page": 1,
+   "per_page": 50,
+   "previous_page": null,
+   "next_page": null,
+   "last_page": 1,
+   "total_entries": 1
+  }
+ }
+}

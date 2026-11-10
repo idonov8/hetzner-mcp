@@ -1,5 +1,6 @@
 import { cached, TTL } from "../cache";
 import { WINDOW_SPEC, type Window } from "../contract";
+import { ConfigError, type Project } from "../projects";
 import type {
   Action, Firewall, FloatingIp, Image, LoadBalancer, MetricsResponse, PrimaryIp,
   Pricing, Server, Volume,
@@ -10,7 +11,7 @@ const PER_PAGE = 50;
 const MAX_PAGES = 100;
 const TIMEOUT_MS = 15_000;
 
-export class ConfigError extends Error {}
+export { ConfigError };
 
 export class HetznerApiError extends Error {
   constructor(
@@ -20,12 +21,6 @@ export class HetznerApiError extends Error {
   ) {
     super(message);
   }
-}
-
-function token(): string {
-  const t = process.env.HCLOUD_TOKEN?.trim();
-  if (!t) throw new ConfigError("HCLOUD_TOKEN not configured");
-  return t;
 }
 
 /**
@@ -52,8 +47,9 @@ function buildUrl(path: string, query: Query = {}): string {
   return u.toString();
 }
 
-export async function hcloudGet<T>(path: string, query: Query = {}): Promise<T> {
-  const auth = token();
+export async function hcloudGet<T>(project: Project, path: string, query: Query = {}): Promise<T> {
+  if (!project.token) throw new ConfigError(`${project.name}: token is empty`);
+  const auth = project.token;
   const res = await fetch(buildUrl(path, query), {
     headers: { Authorization: `Bearer ${auth}`, Accept: "application/json" },
     signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -77,45 +73,54 @@ export async function hcloudGet<T>(path: string, query: Query = {}): Promise<T> 
 type Paged = { meta?: { pagination?: { next_page: number | null } } };
 
 /** Follows meta.pagination.next_page with per_page=50. */
-export async function listAll<T>(path: string, key: string, query: Query = {}, maxItems = Infinity): Promise<T[]> {
+export async function listAll<T>(
+  project: Project, path: string, key: string, query: Query = {}, maxItems = Infinity,
+): Promise<T[]> {
   const out: T[] = [];
   let page: number | null = 1;
   for (let i = 0; page && i < MAX_PAGES && out.length < maxItems; i++) {
-    const body: Paged & Record<string, unknown> = await hcloudGet(path, { ...query, page, per_page: PER_PAGE });
+    const body: Paged & Record<string, unknown> = await hcloudGet(project, path, { ...query, page, per_page: PER_PAGE });
     out.push(...((body[key] as T[]) ?? []));
     page = body.meta?.pagination?.next_page ?? null;
   }
   return out.slice(0, maxItems);
 }
 
-// Cached resource accessors. Cache keys include nothing secret.
+// Cached resource accessors, keyed per project. Cache keys hold no secrets.
 
-export const getServers = () => cached("servers", TTL.list, () => listAll<Server>("/servers", "servers"));
-export const getPricing = () =>
-  cached("pricing", TTL.list, async () => (await hcloudGet<{ pricing: Pricing }>("/pricing")).pricing);
-export const getFirewalls = () => cached("firewalls", TTL.list, () => listAll<Firewall>("/firewalls", "firewalls"));
-export const getVolumes = () => cached("volumes", TTL.list, () => listAll<Volume>("/volumes", "volumes"));
-export const getPrimaryIps = () => cached("primary_ips", TTL.list, () => listAll<PrimaryIp>("/primary_ips", "primary_ips"));
-export const getFloatingIps = () => cached("floating_ips", TTL.list, () => listAll<FloatingIp>("/floating_ips", "floating_ips"));
-export const getLoadBalancers = () =>
-  cached("load_balancers", TTL.list, () => listAll<LoadBalancer>("/load_balancers", "load_balancers"));
-export const getBackupAndSnapshotImages = () =>
-  cached("images:backup,snapshot", TTL.list, () =>
-    listAll<Image>("/images", "images", { type: ["backup", "snapshot"], sort: "created:desc" }),
+const ck = (p: Project, key: string) => `${p.name}\u0000${key}`;
+
+export const getServers = (p: Project) =>
+  cached(ck(p, "servers"), TTL.list, () => listAll<Server>(p, "/servers", "servers"));
+export const getPricing = (p: Project) =>
+  cached(ck(p, "pricing"), TTL.list, async () => (await hcloudGet<{ pricing: Pricing }>(p, "/pricing")).pricing);
+export const getFirewalls = (p: Project) =>
+  cached(ck(p, "firewalls"), TTL.list, () => listAll<Firewall>(p, "/firewalls", "firewalls"));
+export const getVolumes = (p: Project) =>
+  cached(ck(p, "volumes"), TTL.list, () => listAll<Volume>(p, "/volumes", "volumes"));
+export const getPrimaryIps = (p: Project) =>
+  cached(ck(p, "primary_ips"), TTL.list, () => listAll<PrimaryIp>(p, "/primary_ips", "primary_ips"));
+export const getFloatingIps = (p: Project) =>
+  cached(ck(p, "floating_ips"), TTL.list, () => listAll<FloatingIp>(p, "/floating_ips", "floating_ips"));
+export const getLoadBalancers = (p: Project) =>
+  cached(ck(p, "load_balancers"), TTL.list, () => listAll<LoadBalancer>(p, "/load_balancers", "load_balancers"));
+export const getBackupAndSnapshotImages = (p: Project) =>
+  cached(ck(p, "images:backup,snapshot"), TTL.list, () =>
+    listAll<Image>(p, "/images", "images", { type: ["backup", "snapshot"], sort: "created:desc" }),
   );
 
 /** GET /servers/actions is still a supported list endpoint (only GET /actions requires ids since 2025-01-30). */
-export const getServerActions = (limit: number) =>
-  cached(`servers/actions:${limit}`, TTL.list, () =>
-    listAll<Action>("/servers/actions", "actions", { sort: "started:desc" }, limit),
+export const getServerActions = (p: Project, limit: number) =>
+  cached(ck(p, `servers/actions:${limit}`), TTL.list, () =>
+    listAll<Action>(p, "/servers/actions", "actions", { sort: "started:desc" }, limit),
   );
 
-export const getServerMetrics = (serverId: number, window: Window) =>
-  cached(`metrics:${serverId}:${window}`, TTL.metrics, () => {
+export const getServerMetrics = (p: Project, serverId: number, window: Window) =>
+  cached(ck(p, `metrics:${serverId}:${window}`), TTL.metrics, () => {
     const { seconds, step } = WINDOW_SPEC[window];
     const end = new Date();
     const start = new Date(end.getTime() - seconds * 1000);
-    return hcloudGet<MetricsResponse>(`/servers/${serverId}/metrics`, {
+    return hcloudGet<MetricsResponse>(p, `/servers/${serverId}/metrics`, {
       type: "cpu,disk,network",
       start: start.toISOString(),
       end: end.toISOString(),

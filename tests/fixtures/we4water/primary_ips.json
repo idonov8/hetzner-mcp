@@ -1,0 +1,40 @@
+{
+ "primary_ips": [
+  {
+   "id": 770,
+   "name": "primary_ip-770",
+   "ip": "9.9.9.9",
+   "type": "ipv4",
+   "assignee_id": 77,
+   "assignee_type": "server",
+   "auto_delete": true,
+   "blocked": false,
+   "created": "2026-06-01T00:00:00Z",
+   "dns_ptr": [],
+   "labels": {},
+   "location": {
+    "id": 2,
+    "name": "nbg1",
+    "description": "Nuremberg DC Park 1",
+    "country": "DE",
+    "city": "Nuremberg",
+    "latitude": 49.452102,
+    "longitude": 11.076665,
+    "network_zone": "eu-central"
+   },
+   "protection": {
+    "delete": false
+   }
+  }
+ ],
+ "meta": {
+  "pagination": {
+   "page": 1,
+   "per_page": 50,
+   "previous_page": null,
+   "next_page": null,
+   "last_page": 1,
+   "total_entries": 1
+  }
+ }
+}

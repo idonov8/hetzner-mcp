@@ -9,7 +9,7 @@ export const maxDuration = 60;
 const mcp = createMcpHandler(registerTools, {
   serverInfo: { name: "hetzner", version: "1.0.0" },
   instructions:
-    "Read-only view of a Hetzner Cloud project. Every tool returns one JSON text item shaped {\"rows\":[...]} of flat scalar rows.",
+    "Read-only view of one or more Hetzner Cloud projects. Every tool returns one JSON text item shaped {\"rows\":[...]} of flat scalar rows; the first column, project, names the Hetzner project.",
   verboseLogs: false,
 });
 

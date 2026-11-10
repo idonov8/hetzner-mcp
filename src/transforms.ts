@@ -72,6 +72,7 @@ export function consoleUrl(projectId: string | undefined, serverId: number): str
 }
 
 export function serversToRows(
+  project: string,
   servers: Server[],
   pricing: Pricing | null,
   opts: { now: Date; projectId?: string },
@@ -87,6 +88,7 @@ export function serversToRows(
         num(s.included_traffic) ?? num(st.prices?.find((p) => p.location === s.location.name)?.included_traffic);
       const out = num(s.outgoing_traffic);
       return {
+        project,
         id: s.id,
         name: s.name,
         status: s.status,
@@ -193,11 +195,12 @@ export function usageRow(server: Server, window: Window, metrics: MetricsRespons
 }
 
 export function usageRows(
+  project: string,
   servers: Server[],
   window: Window,
   metricsById: Map<number, MetricsResponse | null>,
 ): Row[] {
-  return finalizeRows("server_usage", servers.map((s) => usageRow(s, window, metricsById.get(s.id) ?? null)));
+  return finalizeRows("server_usage", servers.map((s) => ({ project, ...usageRow(s, window, metricsById.get(s.id) ?? null) })));
 }
 
 export function timeseriesRows(server: Server, metrics: MetricsResponse | null): Array<Record<string, unknown>> {
@@ -230,22 +233,30 @@ export function timeseriesRows(server: Server, metrics: MetricsResponse | null):
     }));
 }
 
-export function allTimeseriesRows(servers: Server[], metricsById: Map<number, MetricsResponse | null>): Row[] {
+export function allTimeseriesRows(
+  project: string,
+  servers: Server[],
+  metricsById: Map<number, MetricsResponse | null>,
+): Row[] {
   return finalizeRows(
     "server_timeseries",
-    servers.filter((s) => s.status === "running").flatMap((s) => timeseriesRows(s, metricsById.get(s.id) ?? null)),
+    servers
+      .filter((s) => s.status === "running")
+      .flatMap((s) => timeseriesRows(s, metricsById.get(s.id) ?? null))
+      .map((r) => ({ project, ...r })),
   );
 }
 
 // ---------------------------------------------------------------- actions
 
-export function actionRows(actions: Action[], servers: Server[]): Row[] {
+export function actionRows(project: string, actions: Action[], servers: Server[]): Row[] {
   const names = new Map(servers.map((s) => [s.id, s.name]));
   return finalizeRows(
     "recent_actions",
     actions.map((a) => {
       const serverId = a.resources?.find((r) => r.type === "server")?.id ?? null;
       return {
+        project,
         id: a.id,
         command: a.command,
         status: a.status,
@@ -271,7 +282,7 @@ export function snapshotMonthly(image: Image, pricing: Pricing | null): { net: n
   return { net: size * net, gross: size * gross };
 }
 
-export function imageRows(images: Image[], servers: Server[], pricing: Pricing | null, now: Date): Row[] {
+export function imageRows(project: string, images: Image[], servers: Server[], pricing: Pricing | null, now: Date): Row[] {
   const names = new Map(servers.map((s) => [s.id, s.name]));
   return finalizeRows(
     "backups_and_snapshots",
@@ -280,6 +291,7 @@ export function imageRows(images: Image[], servers: Server[], pricing: Pricing |
       .map((i) => {
         const serverId = i.created_from?.id ?? i.bound_to ?? null;
         return {
+          project,
           id: i.id,
           type: i.type,
           description: i.description ?? null,
@@ -314,7 +326,8 @@ type CostRow = {
   monthly_eur_net: number | null; monthly_eur_gross: number | null; detail: string; _id: number;
 };
 
-export function costRows(input: CostInputs): Row[] {
+/** Rows for one project; the " #<id>" dedupe makes (category, name) unique within it. */
+export function costRows(project: string, input: CostInputs): Row[] {
   const { pricing } = input;
   const serverName = new Map(input.servers.map((s) => [s.id, s.name]));
   const pct = backupPercent(pricing);
@@ -390,7 +403,14 @@ export function costRows(input: CostInputs): Row[] {
     });
   }
 
-  return finalizeRows("cost_breakdown", uniqueNames(rows).map(({ _id, ...r }) => r));
+  return finalizeRows("cost_breakdown", uniqueNames(rows).map(({ _id, ...r }) => ({ project, ...r })));
+}
+
+/** Newest first across projects (ties: higher id first), truncated to limit. */
+export function mergeActions(rows: Row[], limit: number): Row[] {
+  return [...rows]
+    .sort((a, b) => String(b.started ?? "").localeCompare(String(a.started ?? "")) || Number(b.id) - Number(a.id))
+    .slice(0, limit);
 }
 
 /** Guarantees (category, name) uniqueness by suffixing " #<id>" on collisions. */
@@ -452,7 +472,7 @@ export function securityRow(server: Server, firewallsById: Map<number, Firewall>
   };
 }
 
-export function securityRows(servers: Server[], firewalls: Firewall[]): Row[] {
+export function securityRows(project: string, servers: Server[], firewalls: Firewall[]): Row[] {
   const byId = new Map(firewalls.map((f) => [f.id, f]));
-  return finalizeRows("security_overview", servers.map((s) => securityRow(s, byId)));
+  return finalizeRows("security_overview", servers.map((s) => ({ project, ...securityRow(s, byId) })));
 }
