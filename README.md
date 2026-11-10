@@ -2,7 +2,9 @@
 
 A small remote MCP server that gives Claude a **read-only** view of one or more Hetzner Cloud projects (e.g. `personal` and `we4water`): servers, usage metrics, recent actions, backups/snapshots, monthly costs and firewall exposure. It runs as a Next.js route on Vercel (Streamable HTTP, stateless). You add it to claude.ai as a custom connector named **Hetzner**.
 
-- Endpoint: `https://<your-domain>/mcp/<MCP_ACCESS_KEY>`. Any other path, or a wrong key, returns 404.
+**Hosted version:** open https://hetzner-mcp.vercel.app, paste a read-only token, and you get an MCP URL. No sign-up. See [Sealed URLs](#sealed-urls-self-serve-mode) for how that works.
+
+- Endpoints: `https://<your-domain>/mcp/<MCP_ACCESS_KEY>` (owner mode, projects from env vars) or `https://<your-domain>/mcp/<sealed blob>` (self-serve mode). Any other path, a wrong key or an invalid blob returns 404.
 - It only uses `GET` calls against the Hetzner Cloud API. It has no tools that change anything.
 - Every tool queries **all configured projects in parallel** and returns their rows together. The first column of every row, `project`, holds the configured project name.
 - If any project fails (bad token, 401/403/429...), the whole call fails with an error that names the project, e.g. `we4water: Hetzner API 401 unauthorized ...`. A project that silently went missing would look like "no servers".
@@ -33,12 +35,28 @@ The exact column lists are in [`src/contract.ts`](src/contract.ts).
 - **Metric steps**: 1h = 60 s, 24h = 600 s, 7d = 3600 s, 30d = 14400 s.
 - `datacenter`: Hetzner removed `server.datacenter` from the API on 2026-07-01. This column now holds the location description, for example "Falkenstein DC Park 1".
 
+## Sealed URLs (self-serve mode)
+
+The home page (`/`) lets anyone create an MCP URL without an account:
+
+1. You paste one or more `name` + read-only token pairs (and optionally the console project id). `POST /api/seal` makes one `GET /servers` call per token to check it.
+2. The server encrypts the project list with **AES-256-GCM** under a key derived from `SEAL_SECRET`, with a random IV, and returns `https://<domain>/mcp/v1.<base64url(iv | ciphertext | tag)>`.
+3. Nothing is stored. On every MCP request the route decrypts the blob in memory and runs the same read-only tools against those tokens. A tampered, truncated or foreign blob fails GCM authentication and gets a 404.
+
+What this means:
+
+- **The URL is the credential.** Anyone with it can read that project's data through this server. Revoke it by deleting the token in the Hetzner Console. Rotating `SEAL_SECRET` invalidates every sealed URL at once.
+- **Logs only ever see ciphertext.** Tokens are never in a URL in clear, and the app never logs them. The blob can't be used against Hetzner directly.
+- **You trust the operator.** Whoever holds `SEAL_SECRET` can decrypt the URLs it issues. To avoid that, deploy your own copy.
+- **Cache isolation.** The in-memory cache is keyed by a hash of each token, not by project name. Two users can both call their project `personal` and never see each other's data.
+
 ## Configuration
 
 | Variable | Required | Format |
 |---|---|---|
-| `HCLOUD_TOKENS` | yes (or `HCLOUD_TOKEN`) | Comma-separated `name:token` pairs, e.g. `personal:xxx,we4water:yyy`. Names must match `^[a-z0-9_-]{1,32}$`. Each entry is split on its first colon only. |
-| `MCP_ACCESS_KEY` | yes | Random secret, at least 32 characters: `openssl rand -hex 24`. If it is unset or too short, every request returns 404. |
+| `HCLOUD_TOKENS` | for owner mode (or `HCLOUD_TOKEN`) | Comma-separated `name:token` pairs, e.g. `personal:xxx,we4water:yyy`. Names must match `^[a-z0-9_-]{1,32}$`. Each entry is split on its first colon only. |
+| `SEAL_SECRET` | for self-serve | Random secret, at least 32 characters: `openssl rand -hex 32`. Enables `/api/seal` and sealed `/mcp/...` URLs. Without it, sealing returns 503 and sealed URLs 404. Rotating it revokes every sealed URL. |
+| `MCP_ACCESS_KEY` | for owner mode | Random secret, at least 32 characters: `openssl rand -hex 24`. If it is unset or too short, every request returns 404. |
 | `HCLOUD_PROJECT_IDS` | no | `name:id` pairs, e.g. `personal:123456,we4water:654321`. The id is the number in the console URL (`console.hetzner.com/projects/<id>/...`). Enables `console_url` in `list_servers`. |
 | `HCLOUD_TOKEN` | legacy | Used only when `HCLOUD_TOKENS` is unset. It becomes a single project named `default`. |
 | `HCLOUD_PROJECT_ID` | legacy | Console id for the `default` project. |

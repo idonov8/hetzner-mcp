@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { cached, TTL } from "../cache";
 import { WINDOW_SPEC, type Window } from "../contract";
 import { ConfigError, type Project } from "../projects";
@@ -86,9 +87,12 @@ export async function listAll<T>(
   return out.slice(0, maxItems);
 }
 
-// Cached resource accessors, keyed per project. Cache keys hold no secrets.
+// Cached resource accessors. Keys are scoped by a hash of the token, not the
+// project name: with sealed URLs, unrelated users can share a name like
+// "personal" and must never see each other's cached data. Keys hold no secrets.
 
-const ck = (p: Project, key: string) => `${p.name}\u0000${key}`;
+const tokenScope = (p: Project) => createHash("sha256").update(p.token, "utf8").digest("base64url").slice(0, 22);
+const ck = (p: Project, key: string) => `${tokenScope(p)}\u0000${key}`;
 
 export const getServers = (p: Project) =>
   cached(ck(p, "servers"), TTL.list, () => listAll<Server>(p, "/servers", "servers"));

@@ -59,6 +59,15 @@ describe("hetzner client", () => {
     expect(calls).toHaveLength(3);
   });
 
+  it("scopes the cache by token, not project name (two users can both call theirs 'personal')", async () => {
+    const alice = { name: "personal", token: MOCK_TOKENS.personal };
+    const bob = { name: "personal", token: MOCK_TOKENS.we4water };
+    const a = await getServers(alice);
+    const b = await getServers(bob);
+    expect(a.map((s) => s.name)).toEqual(["web-1", "arm-worker", "db-1"]);
+    expect(b.map((s) => s.name)).toEqual(["sensor-gw"]);
+  });
+
   it("throws a clear error for an empty token without calling the API", async () => {
     await expect(getServers({ name: "x", token: "" })).rejects.toThrow(ConfigError);
     expect(calls).toHaveLength(0);

@@ -14,6 +14,8 @@ type Env = Record<string, string | undefined>;
 export interface Project {
   name: string;
   token: string;
+  /** Numeric console project id, only used to build console_url links. */
+  consoleId?: string;
 }
 
 export const PROJECT_NAME_RE = /^[a-z0-9_-]{1,32}$/;

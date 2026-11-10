@@ -35,8 +35,8 @@ const fail = (err: unknown): ToolResult => ({ content: [{ type: "text", text: de
  * error naming that project: a silently missing project would read as
  * "no servers". Error texts never contain tokens.
  */
-async function forAllProjects(fn: (p: Project) => Promise<Row[]>): Promise<Row[]> {
-  const projects = parseProjects();
+async function forAllProjects(source: ProjectSource, fn: (p: Project) => Promise<Row[]>): Promise<Row[]> {
+  const projects = source.projects();
   const results = await Promise.all(
     projects.map((p) =>
       fn(p).catch((err: unknown) => {
@@ -79,7 +79,22 @@ const windowArg = z.object({
 });
 const noArgs = z.object({});
 
-export function registerTools(server: McpServer): void {
+/** Where a request's projects come from: env vars (owner URL) or a sealed URL. Both may throw ConfigError. */
+export interface ProjectSource {
+  projects: () => Project[];
+  projectIds: () => Map<string, string>;
+}
+
+export const envProjects: ProjectSource = { projects: () => parseProjects(), projectIds: () => parseProjectIds() };
+
+export function fixedProjects(projects: Project[]): ProjectSource {
+  const ids = new Map(projects.flatMap((p) => (p.consoleId ? [[p.name, p.consoleId] as const] : [])));
+  return { projects: () => projects, projectIds: () => ids };
+}
+
+export function registerTools(server: McpServer, source: ProjectSource = envProjects): void {
+  const each = (fn: (p: Project) => Promise<Row[]>) => forAllProjects(source, fn);
+
   server.registerTool(
     "list_servers",
     {
@@ -90,8 +105,8 @@ export function registerTools(server: McpServer): void {
     },
     () =>
       run(() => {
-        const ids = parseProjectIds();
-        return forAllProjects(async (p) => {
+        const ids = source.projectIds();
+        return each(async (p) => {
           const [servers, pricing] = await Promise.all([getServers(p), getPricing(p)]);
           return serversToRows(p.name, servers, pricing, { now: new Date(), projectId: ids.get(p.name) });
         });
@@ -108,7 +123,7 @@ export function registerTools(server: McpServer): void {
     },
     ({ window }) =>
       run(() =>
-        forAllProjects(async (p) => {
+        each(async (p) => {
           const servers = await getServers(p);
           return usageRows(p.name, servers, window, await metricsFor(p, servers, window));
         }),
@@ -125,7 +140,7 @@ export function registerTools(server: McpServer): void {
     },
     ({ window }) =>
       run(() =>
-        forAllProjects(async (p) => {
+        each(async (p) => {
           const servers = await getServers(p);
           return allTimeseriesRows(p.name, servers, await metricsFor(p, servers, window));
         }),
@@ -144,7 +159,7 @@ export function registerTools(server: McpServer): void {
     },
     ({ limit }) =>
       run(async () => {
-        const rows = await forAllProjects(async (p) => {
+        const rows = await each(async (p) => {
           const [actions, servers] = await Promise.all([getServerActions(p, limit), getServers(p)]);
           return actionRows(p.name, actions, servers);
         });
@@ -162,7 +177,7 @@ export function registerTools(server: McpServer): void {
     },
     () =>
       run(() =>
-        forAllProjects(async (p) => {
+        each(async (p) => {
           const [images, servers, pricing] = await Promise.all([
             getBackupAndSnapshotImages(p), getServers(p), getPricing(p),
           ]);
@@ -181,7 +196,7 @@ export function registerTools(server: McpServer): void {
     },
     () =>
       run(() =>
-        forAllProjects(async (p) => {
+        each(async (p) => {
           const [servers, volumes, primaryIps, floatingIps, images, loadBalancers, pricing] = await Promise.all([
             getServers(p), getVolumes(p), getPrimaryIps(p), getFloatingIps(p), getBackupAndSnapshotImages(p),
             getLoadBalancers(p), getPricing(p),
@@ -201,7 +216,7 @@ export function registerTools(server: McpServer): void {
     },
     () =>
       run(() =>
-        forAllProjects(async (p) => {
+        each(async (p) => {
           const [servers, firewalls] = await Promise.all([getServers(p), getFirewalls(p)]);
           return securityRows(p.name, servers, firewalls);
         }),
