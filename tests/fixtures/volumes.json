@@ -1,0 +1,62 @@
+{
+ "volumes": [
+  {
+   "id": 4711,
+   "name": "data",
+   "server": 42,
+   "status": "available",
+   "location": {
+    "id": 1,
+    "name": "fsn1",
+    "description": "Falkenstein DC Park 1",
+    "country": "DE",
+    "city": "Falkenstein",
+    "latitude": 50.47612,
+    "longitude": 12.370071,
+    "network_zone": "eu-central"
+   },
+   "size": 40,
+   "linux_device": "/dev/disk/by-id/scsi-0HC_Volume_4711",
+   "format": "ext4",
+   "protection": {
+    "delete": false
+   },
+   "labels": {},
+   "created": "2026-01-01T00:00:00Z"
+  },
+  {
+   "id": 4712,
+   "name": "orphan",
+   "server": null,
+   "status": "available",
+   "location": {
+    "id": 2,
+    "name": "nbg1",
+    "description": "Nuremberg DC Park 1",
+    "country": "DE",
+    "city": "Nuremberg",
+    "latitude": 49.452102,
+    "longitude": 11.076665,
+    "network_zone": "eu-central"
+   },
+   "size": 100,
+   "linux_device": "/dev/disk/by-id/scsi-0HC_Volume_4712",
+   "format": null,
+   "protection": {
+    "delete": false
+   },
+   "labels": {},
+   "created": "2026-01-01T00:00:00Z"
+  }
+ ],
+ "meta": {
+  "pagination": {
+   "page": 1,
+   "per_page": 50,
+   "previous_page": null,
+   "next_page": null,
+   "last_page": 1,
+   "total_entries": 2
+  }
+ }
+}

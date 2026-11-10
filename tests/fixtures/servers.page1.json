@@ -1,0 +1,322 @@
+{
+ "servers": [
+  {
+   "id": 42,
+   "name": "web-1",
+   "status": "running",
+   "created": "2026-10-10T12:00:00Z",
+   "public_net": {
+    "ipv4": {
+     "id": 420,
+     "ip": "1.2.3.4",
+     "blocked": false,
+     "dns_ptr": "static.example.com"
+    },
+    "ipv6": {
+     "id": 421,
+     "ip": "2001:db8::/64",
+     "blocked": false,
+     "dns_ptr": []
+    },
+    "floating_ips": [],
+    "firewalls": [
+     {
+      "id": 42,
+      "status": "applied"
+     },
+     {
+      "id": 44,
+      "status": "applied"
+     }
+    ]
+   },
+   "private_net": [],
+   "server_type": {
+    "id": 104,
+    "name": "cpx22",
+    "description": "CPX22",
+    "category": "Shared vCPU",
+    "cores": 2,
+    "memory": 4,
+    "disk": 80,
+    "cpu_type": "shared",
+    "architecture": "x86",
+    "storage_type": "local",
+    "deprecation": null,
+    "prices": [
+     {
+      "location": "fsn1",
+      "price_hourly": {
+       "net": "0.0109",
+       "gross": "0.0130"
+      },
+      "price_monthly": {
+       "net": "7.9900",
+       "gross": "9.5081"
+      },
+      "included_traffic": 21990232555520,
+      "price_per_tb_traffic": {
+       "net": "1.0000",
+       "gross": "1.1900"
+      }
+     },
+     {
+      "location": "nbg1",
+      "price_hourly": {
+       "net": "0.0109",
+       "gross": "0.0130"
+      },
+      "price_monthly": {
+       "net": "7.9900",
+       "gross": "9.5081"
+      },
+      "included_traffic": 21990232555520,
+      "price_per_tb_traffic": {
+       "net": "1.0000",
+       "gross": "1.1900"
+      }
+     },
+     {
+      "location": "hel1",
+      "price_hourly": {
+       "net": "0.0109",
+       "gross": "0.0130"
+      },
+      "price_monthly": {
+       "net": "7.9900",
+       "gross": "9.5081"
+      },
+      "included_traffic": 21990232555520,
+      "price_per_tb_traffic": {
+       "net": "1.0000",
+       "gross": "1.1900"
+      }
+     }
+    ],
+    "locations": [
+     {
+      "id": 1,
+      "name": "fsn1",
+      "available": true,
+      "recommended": true,
+      "deprecation": null
+     },
+     {
+      "id": 2,
+      "name": "nbg1",
+      "available": true,
+      "recommended": true,
+      "deprecation": null
+     },
+     {
+      "id": 3,
+      "name": "hel1",
+      "available": true,
+      "recommended": true,
+      "deprecation": null
+     }
+    ]
+   },
+   "location": {
+    "id": 1,
+    "name": "fsn1",
+    "description": "Falkenstein DC Park 1",
+    "country": "DE",
+    "city": "Falkenstein",
+    "latitude": 50.47612,
+    "longitude": 12.370071,
+    "network_zone": "eu-central"
+   },
+   "image": {
+    "architecture": "x86",
+    "bound_to": null,
+    "created": "2024-04-25T00:00:00Z",
+    "created_from": null,
+    "deleted": null,
+    "deprecation": null,
+    "description": "Ubuntu 24.04",
+    "disk_size": 5,
+    "id": 161547269,
+    "image_size": null,
+    "labels": {},
+    "name": "ubuntu-24.04",
+    "os_flavor": "ubuntu",
+    "os_version": "24.04",
+    "protection": {
+     "delete": false
+    },
+    "rapid_deploy": true,
+    "status": "available",
+    "type": "system"
+   },
+   "iso": null,
+   "backup_window": "22-02",
+   "rescue_enabled": false,
+   "locked": false,
+   "protection": {
+    "delete": true,
+    "rebuild": true
+   },
+   "labels": {
+    "env": "prod",
+    "role": "web"
+   },
+   "volumes": [
+    4711
+   ],
+   "primary_disk_size": 80,
+   "placement_group": null,
+   "load_balancers": [],
+   "included_traffic": 21990232555520,
+   "outgoing_traffic": 2199023255552,
+   "ingoing_traffic": 6597069766656
+  },
+  {
+   "id": 43,
+   "name": "arm-worker",
+   "status": "running",
+   "created": "2026-11-01T00:00:00Z",
+   "public_net": {
+    "ipv4": {
+     "id": 430,
+     "ip": "5.6.7.8",
+     "blocked": false,
+     "dns_ptr": "static.example.com"
+    },
+    "ipv6": {
+     "id": 431,
+     "ip": "2001:db8:1::/64",
+     "blocked": false,
+     "dns_ptr": []
+    },
+    "floating_ips": [],
+    "firewalls": []
+   },
+   "private_net": [],
+   "server_type": {
+    "id": 93,
+    "name": "cax21",
+    "description": "CAX21",
+    "category": "Shared vCPU",
+    "cores": 4,
+    "memory": 8,
+    "disk": 80,
+    "cpu_type": "shared",
+    "architecture": "arm",
+    "storage_type": "local",
+    "deprecation": null,
+    "prices": [
+     {
+      "location": "fsn1",
+      "price_hourly": {
+       "net": "0.0089",
+       "gross": "0.0106"
+      },
+      "price_monthly": {
+       "net": "6.4900",
+       "gross": "7.7231"
+      },
+      "included_traffic": 21990232555520,
+      "price_per_tb_traffic": {
+       "net": "1.0000",
+       "gross": "1.1900"
+      }
+     },
+     {
+      "location": "hel1",
+      "price_hourly": {
+       "net": "0.0089",
+       "gross": "0.0106"
+      },
+      "price_monthly": {
+       "net": "6.4900",
+       "gross": "7.7231"
+      },
+      "included_traffic": 21990232555520,
+      "price_per_tb_traffic": {
+       "net": "1.0000",
+       "gross": "1.1900"
+      }
+     }
+    ],
+    "locations": [
+     {
+      "id": 1,
+      "name": "fsn1",
+      "available": true,
+      "recommended": true,
+      "deprecation": null
+     },
+     {
+      "id": 3,
+      "name": "hel1",
+      "available": true,
+      "recommended": true,
+      "deprecation": {
+       "announced": "2026-09-01T00:00:00Z",
+       "unavailable_after": "2026-12-01T00:00:00Z"
+      }
+     }
+    ]
+   },
+   "location": {
+    "id": 3,
+    "name": "hel1",
+    "description": "Helsinki DC Park 1",
+    "country": "FI",
+    "city": "Helsinki",
+    "latitude": 60.169855,
+    "longitude": 24.938379,
+    "network_zone": "eu-central"
+   },
+   "image": {
+    "architecture": "x86",
+    "bound_to": null,
+    "created": "2024-04-25T00:00:00Z",
+    "created_from": null,
+    "deleted": null,
+    "deprecation": null,
+    "description": "Ubuntu 24.04",
+    "disk_size": 5,
+    "id": 161547269,
+    "image_size": null,
+    "labels": {},
+    "name": "ubuntu-24.04",
+    "os_flavor": "ubuntu",
+    "os_version": "24.04",
+    "protection": {
+     "delete": false
+    },
+    "rapid_deploy": true,
+    "status": "available",
+    "type": "system"
+   },
+   "iso": null,
+   "backup_window": null,
+   "rescue_enabled": false,
+   "locked": false,
+   "protection": {
+    "delete": false,
+    "rebuild": false
+   },
+   "labels": {},
+   "volumes": [],
+   "primary_disk_size": 80,
+   "placement_group": null,
+   "load_balancers": [],
+   "included_traffic": 21990232555520,
+   "outgoing_traffic": 549755813888,
+   "ingoing_traffic": 1649267441664
+  }
+ ],
+ "meta": {
+  "pagination": {
+   "page": 1,
+   "per_page": 50,
+   "previous_page": null,
+   "next_page": 2,
+   "last_page": 2,
+   "total_entries": 3
+  }
+ }
+}

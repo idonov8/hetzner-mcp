@@ -1,0 +1,114 @@
+{
+ "images": [
+  {
+   "id": 9001,
+   "type": "backup",
+   "status": "available",
+   "name": null,
+   "description": "web-1 2026-11-08",
+   "image_size": 3.21,
+   "disk_size": 80,
+   "created": "2026-11-08T22:15:00Z",
+   "created_from": {
+    "id": 42,
+    "name": "web-1"
+   },
+   "bound_to": 42,
+   "os_flavor": "ubuntu",
+   "os_version": null,
+   "architecture": "x86",
+   "rapid_deploy": false,
+   "protection": {
+    "delete": false
+   },
+   "deprecation": null,
+   "deleted": null,
+   "labels": {}
+  },
+  {
+   "id": 9002,
+   "type": "snapshot",
+   "status": "available",
+   "name": null,
+   "description": "pre-upgrade",
+   "image_size": 4.5,
+   "disk_size": 80,
+   "created": "2026-10-30T09:00:00Z",
+   "created_from": {
+    "id": 42,
+    "name": "web-1"
+   },
+   "bound_to": null,
+   "os_flavor": "ubuntu",
+   "os_version": null,
+   "architecture": "x86",
+   "rapid_deploy": false,
+   "protection": {
+    "delete": true
+   },
+   "deprecation": null,
+   "deleted": null,
+   "labels": {}
+  },
+  {
+   "id": 9003,
+   "type": "snapshot",
+   "status": "available",
+   "name": null,
+   "description": "pre-upgrade",
+   "image_size": 10.0,
+   "disk_size": 40,
+   "created": "2025-11-09T00:00:00Z",
+   "created_from": {
+    "id": 999,
+    "name": "old-box"
+   },
+   "bound_to": null,
+   "os_flavor": "debian",
+   "os_version": null,
+   "architecture": "x86",
+   "rapid_deploy": false,
+   "protection": {
+    "delete": false
+   },
+   "deprecation": null,
+   "deleted": null,
+   "labels": {}
+  },
+  {
+   "id": 9004,
+   "type": "snapshot",
+   "status": "creating",
+   "name": null,
+   "description": "in-progress",
+   "image_size": null,
+   "disk_size": 80,
+   "created": "2026-11-09T09:00:00Z",
+   "created_from": {
+    "id": 43,
+    "name": "arm-worker"
+   },
+   "bound_to": null,
+   "os_flavor": "ubuntu",
+   "os_version": null,
+   "architecture": "arm",
+   "rapid_deploy": false,
+   "protection": {
+    "delete": false
+   },
+   "deprecation": null,
+   "deleted": null,
+   "labels": {}
+  }
+ ],
+ "meta": {
+  "pagination": {
+   "page": 1,
+   "per_page": 50,
+   "previous_page": null,
+   "next_page": null,
+   "last_page": 1,
+   "total_entries": 4
+  }
+ }
+}

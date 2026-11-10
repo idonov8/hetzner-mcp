@@ -1,0 +1,50 @@
+{
+ "load_balancers": [
+  {
+   "id": 5,
+   "name": "lb-web",
+   "location": {
+    "id": 1,
+    "name": "fsn1",
+    "description": "Falkenstein DC Park 1",
+    "country": "DE",
+    "city": "Falkenstein",
+    "latitude": 50.47612,
+    "longitude": 12.370071,
+    "network_zone": "eu-central"
+   },
+   "load_balancer_type": {
+    "id": 1,
+    "name": "lb11",
+    "description": "LB11"
+   },
+   "public_net": {
+    "enabled": true
+   },
+   "private_net": [],
+   "protection": {
+    "delete": false
+   },
+   "labels": {},
+   "created": "2026-01-01T00:00:00Z",
+   "services": [],
+   "targets": [],
+   "algorithm": {
+    "type": "round_robin"
+   },
+   "included_traffic": 21990232555520,
+   "outgoing_traffic": 0,
+   "ingoing_traffic": 0
+  }
+ ],
+ "meta": {
+  "pagination": {
+   "page": 1,
+   "per_page": 50,
+   "previous_page": null,
+   "next_page": null,
+   "last_page": 1,
+   "total_entries": 1
+  }
+ }
+}

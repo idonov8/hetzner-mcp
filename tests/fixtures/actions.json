@@ -1,0 +1,66 @@
+{
+ "actions": [
+  {
+   "id": 13,
+   "command": "create_image",
+   "status": "running",
+   "progress": 40,
+   "started": "2026-11-09T09:00:00Z",
+   "finished": null,
+   "error": null,
+   "resources": [
+    {
+     "id": 43,
+     "type": "server"
+    },
+    {
+     "id": 9004,
+     "type": "image"
+    }
+   ]
+  },
+  {
+   "id": 12,
+   "command": "reboot_server",
+   "status": "error",
+   "progress": 100,
+   "started": "2026-11-08T10:00:00Z",
+   "finished": "2026-11-08T10:00:05Z",
+   "error": {
+    "code": "action_failed",
+    "message": "Action failed"
+   },
+   "resources": [
+    {
+     "id": 42,
+     "type": "server"
+    }
+   ]
+  },
+  {
+   "id": 11,
+   "command": "delete_server",
+   "status": "success",
+   "progress": 100,
+   "started": "2026-11-01T08:00:00+00:00",
+   "finished": "2026-11-01T08:00:30+00:00",
+   "error": null,
+   "resources": [
+    {
+     "id": 999,
+     "type": "server"
+    }
+   ]
+  }
+ ],
+ "meta": {
+  "pagination": {
+   "page": 1,
+   "per_page": 50,
+   "previous_page": null,
+   "next_page": null,
+   "last_page": 1,
+   "total_entries": 3
+  }
+ }
+}

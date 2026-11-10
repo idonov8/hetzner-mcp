@@ -1,0 +1,92 @@
+{
+ "primary_ips": [
+  {
+   "id": 420,
+   "name": "primary_ip-420",
+   "ip": "1.2.3.4",
+   "type": "ipv4",
+   "assignee_id": 42,
+   "assignee_type": "server",
+   "auto_delete": true,
+   "blocked": false,
+   "created": "2026-01-01T00:00:00Z",
+   "dns_ptr": [],
+   "labels": {},
+   "location": {
+    "id": 1,
+    "name": "fsn1",
+    "description": "Falkenstein DC Park 1",
+    "country": "DE",
+    "city": "Falkenstein",
+    "latitude": 50.47612,
+    "longitude": 12.370071,
+    "network_zone": "eu-central"
+   },
+   "protection": {
+    "delete": false
+   }
+  },
+  {
+   "id": 421,
+   "name": "primary_ip-421",
+   "ip": "2001:db8::/64",
+   "type": "ipv6",
+   "assignee_id": 42,
+   "assignee_type": "server",
+   "auto_delete": true,
+   "blocked": false,
+   "created": "2026-01-01T00:00:00Z",
+   "dns_ptr": [],
+   "labels": {},
+   "location": {
+    "id": 1,
+    "name": "fsn1",
+    "description": "Falkenstein DC Park 1",
+    "country": "DE",
+    "city": "Falkenstein",
+    "latitude": 50.47612,
+    "longitude": 12.370071,
+    "network_zone": "eu-central"
+   },
+   "protection": {
+    "delete": false
+   }
+  },
+  {
+   "id": 430,
+   "name": "primary_ip-430",
+   "ip": "5.6.7.8",
+   "type": "ipv4",
+   "assignee_id": 43,
+   "assignee_type": "server",
+   "auto_delete": true,
+   "blocked": false,
+   "created": "2026-01-01T00:00:00Z",
+   "dns_ptr": [],
+   "labels": {},
+   "location": {
+    "id": 3,
+    "name": "hel1",
+    "description": "Helsinki DC Park 1",
+    "country": "FI",
+    "city": "Helsinki",
+    "latitude": 60.169855,
+    "longitude": 24.938379,
+    "network_zone": "eu-central"
+   },
+   "protection": {
+    "delete": false
+   }
+  }
+ ],
+ "meta": {
+  "pagination": {
+   "page": 1,
+   "per_page": 50,
+   "previous_page": null,
+   "next_page": null,
+   "last_page": 1,
+   "total_entries": 3
+  }
+ }
+}
