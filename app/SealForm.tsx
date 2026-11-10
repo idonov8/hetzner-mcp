@@ -113,11 +113,6 @@ export default function SealForm() {
           {busy ? "Checking tokens…" : "Create MCP URL"}
         </button>
       </div>
-      <p className="hint">
-        One token per Hetzner project (tokens are project-scoped). Create it under Console → project → Security → API
-        tokens, with permission <strong>Read</strong>.
-      </p>
-
       {error && <p className="error" role="alert">{error}</p>}
 
       {url && (

@@ -41,12 +41,26 @@ body {
 }
 
 main {
-  max-width: 760px;
+  position: relative;
+  max-width: 860px;
   margin: 0 auto;
   padding: 56px 16px 80px;
 }
 
+.gh {
+  position: absolute;
+  top: 18px;
+  right: 16px;
+  display: inline-flex;
+  padding: 6px;
+  border-radius: 8px;
+  color: var(--muted);
+}
+
+.gh:hover { color: var(--ink); background: var(--code-bg); }
+
 h1 {
+  padding-right: 40px;
   font-size: clamp(30px, 6vw, 46px);
   line-height: 1.08;
   letter-spacing: -0.02em;
@@ -86,7 +100,6 @@ a { color: inherit; text-underline-offset: 3px; }
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 20px;
-  margin-top: 32px;
 }
 
 .row {
@@ -151,32 +164,87 @@ button.icon { padding: 0; font-size: 18px; line-height: 1; color: var(--muted); 
 ol.steps, ul.plain { padding-left: 20px; margin: 0; }
 ol.steps li, ul.plain li { margin-bottom: 8px; }
 
+.guide {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  counter-reset: guide;
+}
+
+.guide li {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 14px 16px;
+  font-size: 17px;
+  line-height: 1.4;
+  counter-increment: guide;
+}
+
+.guide li + li { margin-left: 26px; }
+
+.guide li + li::after {
+  content: "→";
+  position: absolute;
+  left: -21px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.guide li::before {
+  content: counter(guide);
+  display: block;
+  font: 700 13px var(--mono);
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+
 .flow {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
   margin: 8px 0 16px;
   counter-reset: flow;
 }
 
 .flow div {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 14px;
-  font-size: 14px;
+  position: relative;
+  padding: 0 0 22px 46px;
+  font-size: 15px;
   counter-increment: flow;
 }
 
 .flow div::before {
   content: counter(flow);
-  display: block;
-  font: 700 12px var(--mono);
-  color: var(--accent);
-  margin-bottom: 6px;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font: 700 13px var(--mono);
+  color: var(--accent-ink);
+  background: var(--accent);
 }
 
-.flow strong { display: block; margin-bottom: 4px; }
+.flow div:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  top: 34px;
+  bottom: 4px;
+  width: 2px;
+  background: var(--line);
+}
+
+.flow strong { display: block; margin-bottom: 2px; font-size: 16px; }
 
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 td { padding: 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
@@ -191,6 +259,8 @@ footer { margin-top: 64px; font-size: 13px; color: var(--muted); }
   .row .name { grid-column: 1; }
   .row .remove { grid-column: 2; grid-row: 1; }
   .row-head { display: none; }
-  .flow { grid-template-columns: 1fr 1fr; }
+  .guide { flex-direction: column; }
+  .guide li + li { margin: 22px 0 0; }
+  .guide li + li::after { content: "↓"; left: 50%; top: -19px; transform: translateX(-50%); }
   td:first-child { width: 130px; }
 }
