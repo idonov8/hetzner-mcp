@@ -8,13 +8,35 @@ import { fileURLToPath } from "node:url";
 const dir = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
 export const fixture = (name) => JSON.parse(readFileSync(join(dir, `${name}.json`), "utf8"));
 
-export const MOCK_TOKEN = "test-token-not-real";
+/** Fake tokens, one per fake project. The personal project uses the root fixtures. */
+export const MOCK_TOKENS = { personal: "test-token-personal", we4water: "test-token-we4water" };
+export const MOCK_TOKEN = MOCK_TOKENS.personal;
+/** Authenticates fine but every request is rate limited. */
+export const RATE_LIMITED_TOKEN = "test-token-ratelimited";
+
+const PERSONAL = {
+  servers: (page) => fixture(page === 1 ? "servers.page1" : "servers.page2"),
+  list: (name) => fixture(name),
+  metrics: { 42: "metrics.web-1", 43: "metrics.arm-worker" },
+};
+const WE4WATER = {
+  servers: () => fixture("we4water/servers"),
+  list: (name) => (name === "pricing" ? fixture("pricing") : fixture(`we4water/${name}`)),
+  metrics: { 77: "we4water/metrics.sensor-gw" },
+};
 
 /** Returns { status, body } for a GET to the given Hetzner API URL. */
 export function respond(url, authorization) {
   const u = new URL(url);
   const path = u.pathname.replace(/^\/v1/, "");
-  if (authorization !== `Bearer ${MOCK_TOKEN}`) {
+  if (authorization === `Bearer ${RATE_LIMITED_TOKEN}`) {
+    return { status: 429, body: { error: { code: "rate_limit_exceeded", message: "limit reached" } } };
+  }
+  const data =
+    authorization === `Bearer ${MOCK_TOKENS.personal}` ? PERSONAL
+    : authorization === `Bearer ${MOCK_TOKENS.we4water}` ? WE4WATER
+    : null;
+  if (!data) {
     return { status: 401, body: { error: { code: "unauthorized", message: "unable to authenticate" } } };
   }
   const page = Number(u.searchParams.get("page") ?? "1");
@@ -24,22 +46,17 @@ export function respond(url, authorization) {
 
   switch (path) {
     case "/servers":
-      return { status: 200, body: fixture(page === 1 ? "servers.page1" : "servers.page2") };
+      return { status: 200, body: data.servers(page) };
     case "/pricing":
-      return { status: 200, body: fixture("pricing") };
     case "/firewalls":
-      return { status: 200, body: fixture("firewalls") };
     case "/volumes":
-      return { status: 200, body: fixture("volumes") };
     case "/primary_ips":
-      return { status: 200, body: fixture("primary_ips") };
     case "/floating_ips":
-      return { status: 200, body: fixture("floating_ips") };
     case "/load_balancers":
-      return { status: 200, body: fixture("load_balancers") };
+      return { status: 200, body: data.list(path.slice(1)) };
     case "/images": {
       const types = u.searchParams.getAll("type");
-      const body = fixture("images");
+      const body = data.list("images");
       body.images = body.images.filter((i) => types.length === 0 || types.includes(i.type));
       return { status: 200, body };
     }
@@ -47,7 +64,7 @@ export function respond(url, authorization) {
       if (u.searchParams.get("sort") !== "started:desc") {
         return { status: 400, body: { error: { code: "invalid_input", message: "expected sort=started:desc" } } };
       }
-      return { status: 200, body: fixture("actions") };
+      return { status: 200, body: data.list("actions") };
     }
   }
 
@@ -58,9 +75,8 @@ export function respond(url, authorization) {
         return { status: 400, body: { error: { code: "invalid_input", message: `missing ${p}` } } };
       }
     }
-    const id = Number(m[1]);
-    if (id === 42) return { status: 200, body: fixture("metrics.web-1") };
-    if (id === 43) return { status: 200, body: fixture("metrics.arm-worker") };
+    const name = data.metrics[Number(m[1])];
+    if (name) return { status: 200, body: fixture(name) };
     return { status: 404, body: { error: { code: "not_found", message: "server not found" } } };
   }
   return { status: 404, body: { error: { code: "not_found", message: `no route ${path}` } } };

@@ -1,0 +1,173 @@
+{
+ "servers": [
+  {
+   "id": 77,
+   "name": "sensor-gw",
+   "status": "running",
+   "created": "2026-06-01T00:00:00Z",
+   "public_net": {
+    "ipv4": {
+     "id": 770,
+     "ip": "9.9.9.9",
+     "blocked": false,
+     "dns_ptr": "static.example.com"
+    },
+    "ipv6": {
+     "id": 771,
+     "ip": "2001:db8:77::/64",
+     "blocked": false,
+     "dns_ptr": []
+    },
+    "floating_ips": [],
+    "firewalls": []
+   },
+   "private_net": [],
+   "server_type": {
+    "id": 104,
+    "name": "cpx22",
+    "description": "CPX22",
+    "category": "Shared vCPU",
+    "cores": 2,
+    "memory": 4,
+    "disk": 80,
+    "cpu_type": "shared",
+    "architecture": "x86",
+    "storage_type": "local",
+    "deprecation": null,
+    "prices": [
+     {
+      "location": "fsn1",
+      "price_hourly": {
+       "net": "0.0109",
+       "gross": "0.0130"
+      },
+      "price_monthly": {
+       "net": "7.9900",
+       "gross": "9.5081"
+      },
+      "included_traffic": 21990232555520,
+      "price_per_tb_traffic": {
+       "net": "1.0000",
+       "gross": "1.1900"
+      }
+     },
+     {
+      "location": "nbg1",
+      "price_hourly": {
+       "net": "0.0109",
+       "gross": "0.0130"
+      },
+      "price_monthly": {
+       "net": "7.9900",
+       "gross": "9.5081"
+      },
+      "included_traffic": 21990232555520,
+      "price_per_tb_traffic": {
+       "net": "1.0000",
+       "gross": "1.1900"
+      }
+     },
+     {
+      "location": "hel1",
+      "price_hourly": {
+       "net": "0.0109",
+       "gross": "0.0130"
+      },
+      "price_monthly": {
+       "net": "7.9900",
+       "gross": "9.5081"
+      },
+      "included_traffic": 21990232555520,
+      "price_per_tb_traffic": {
+       "net": "1.0000",
+       "gross": "1.1900"
+      }
+     }
+    ],
+    "locations": [
+     {
+      "id": 1,
+      "name": "fsn1",
+      "available": true,
+      "recommended": true,
+      "deprecation": null
+     },
+     {
+      "id": 2,
+      "name": "nbg1",
+      "available": true,
+      "recommended": true,
+      "deprecation": null
+     },
+     {
+      "id": 3,
+      "name": "hel1",
+      "available": true,
+      "recommended": true,
+      "deprecation": null
+     }
+    ]
+   },
+   "location": {
+    "id": 2,
+    "name": "nbg1",
+    "description": "Nuremberg DC Park 1",
+    "country": "DE",
+    "city": "Nuremberg",
+    "latitude": 49.452102,
+    "longitude": 11.076665,
+    "network_zone": "eu-central"
+   },
+   "image": {
+    "architecture": "x86",
+    "bound_to": null,
+    "created": "2024-04-25T00:00:00Z",
+    "created_from": null,
+    "deleted": null,
+    "deprecation": null,
+    "description": "Ubuntu 24.04",
+    "disk_size": 5,
+    "id": 161547269,
+    "image_size": null,
+    "labels": {},
+    "name": "ubuntu-24.04",
+    "os_flavor": "ubuntu",
+    "os_version": "24.04",
+    "protection": {
+     "delete": false
+    },
+    "rapid_deploy": true,
+    "status": "available",
+    "type": "system"
+   },
+   "iso": null,
+   "backup_window": null,
+   "rescue_enabled": false,
+   "locked": false,
+   "protection": {
+    "delete": false,
+    "rebuild": false
+   },
+   "labels": {
+    "client": "we4water"
+   },
+   "volumes": [],
+   "primary_disk_size": 80,
+   "placement_group": null,
+   "load_balancers": [],
+   "included_traffic": 21990232555520,
+   "outgoing_traffic": 107374182400,
+   "ingoing_traffic": 6597069766656
+  }
+ ],
+ "meta": {
+  "pagination": {
+   "page": 1,
+   "per_page": 50,
+   "previous_page": null,
+   "next_page": null,
+   "last_page": 1,
+   "total_entries": 1
+  }
+ }
+}

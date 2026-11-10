@@ -4,7 +4,7 @@ import type {
   Action, Firewall, FloatingIp, Image, LoadBalancer, MetricsResponse, PrimaryIp, Pricing, Server, Volume,
 } from "../src/hetzner/types";
 import {
-  actionRows, allTimeseriesRows, consoleUrl, costRows, imageRows, normalizeCpu, securityRows,
+  mergeActions, actionRows, allTimeseriesRows, consoleUrl, costRows, imageRows, normalizeCpu, securityRows,
   serversToRows, usageRows,
 } from "../src/transforms";
 import { fixture } from "./mock-hetzner.mjs";
@@ -30,6 +30,8 @@ const byName = <T extends Record<string, unknown>>(rows: T[], key: string, value
 function expectContract(tool: keyof typeof COLUMNS, rows: Array<Record<string, unknown>>) {
   for (const r of rows) {
     expect(Object.keys(r)).toEqual([...COLUMNS[tool]]);
+    expect(Object.keys(r)[0]).toBe("project");
+    expect(r.project).toBe("personal");
     for (const v of Object.values(r)) {
       expect(v === null || ["string", "number", "boolean"].includes(typeof v)).toBe(true);
       if (typeof v === "number") expect(round2(v)).toBe(v);
@@ -40,7 +42,7 @@ function expectContract(tool: keyof typeof COLUMNS, rows: Array<Record<string, u
 describe("contract helpers", () => {
   it("rounds to 2 decimals and nulls non-finite numbers", () => {
     const [row] = finalizeRows("cost_breakdown", [
-      { category: "server", name: "x", server_name: null, monthly_eur_net: 1.005, monthly_eur_gross: Number.NaN, detail: "d" },
+      { project: "p", category: "server", name: "x", server_name: null, monthly_eur_net: 1.005, monthly_eur_gross: Number.NaN, detail: "d" },
     ]);
     expect(row.monthly_eur_net).toBe(1.01);
     expect(row.monthly_eur_gross).toBeNull();
@@ -49,19 +51,19 @@ describe("contract helpers", () => {
     expect(() => finalizeRows("cost_breakdown", [{ category: "server" }])).toThrow(/missing column/);
     expect(() =>
       finalizeRows("cost_breakdown", [
-        { category: "s", name: "n", server_name: null, monthly_eur_net: 1, monthly_eur_gross: 1, detail: "d", extra: 1 },
+        { project: "p", category: "s", name: "n", server_name: null, monthly_eur_net: 1, monthly_eur_gross: 1, detail: "d", extra: 1 },
       ]),
     ).toThrow(/unexpected columns/);
     expect(() =>
       finalizeRows("cost_breakdown", [
-        { category: "s", name: "n", server_name: null, monthly_eur_net: 1, monthly_eur_gross: 1, detail: { a: 1 } },
+        { project: "p", category: "s", name: "n", server_name: null, monthly_eur_net: 1, monthly_eur_gross: 1, detail: { a: 1 } },
       ]),
     ).toThrow(/non-scalar/);
   });
 });
 
 describe("list_servers", () => {
-  const rows = serversToRows(servers, pricing, { now: NOW, projectId: "123456" });
+  const rows = serversToRows("personal", servers, pricing, { now: NOW, projectId: "123456" });
 
   it("matches the contract", () => {
     expect(rows).toHaveLength(3);
@@ -70,7 +72,7 @@ describe("list_servers", () => {
 
   it("maps a running server with backups, firewalls and traffic", () => {
     expect(byName(rows, "name", "web-1")).toEqual({
-      id: 42, name: "web-1", status: "running", type: "cpx22", type_description: "CPX22",
+      project: "personal", id: 42, name: "web-1", status: "running", type: "cpx22", type_description: "CPX22",
       cpu_type: "shared", architecture: "x86", cores: 2, memory_gb: 4, disk_gb: 80,
       location: "fsn1", city: "Falkenstein", country: "DE", datacenter: "Falkenstein DC Park 1",
       ipv4: "1.2.3.4", ipv6: "2001:db8::/64", image: "ubuntu-24.04", os_flavor: "ubuntu",
@@ -103,12 +105,12 @@ describe("list_servers", () => {
   });
 
   it("console_url is null unless HCLOUD_PROJECT_ID is a numeric id", () => {
-    expect(serversToRows(servers, pricing, { now: NOW })[0].console_url).toBeNull();
+    expect(serversToRows("personal", servers, pricing, { now: NOW })[0].console_url).toBeNull();
     expect(consoleUrl("abc/../x", 1)).toBeNull();
   });
 
   it("falls back to prices embedded in server_type when /pricing lacks the type", () => {
-    const r = serversToRows(servers, { ...pricing, server_types: [] }, { now: NOW });
+    const r = serversToRows("personal", servers, { ...pricing, server_types: [] }, { now: NOW });
     expect(byName(r, "name", "web-1").price_monthly_eur).toBe(7.99);
   });
 });
@@ -123,7 +125,7 @@ describe("cpu normalization", () => {
 });
 
 describe("server_usage", () => {
-  const rows = usageRows(servers, "1h", metrics);
+  const rows = usageRows("personal", servers, "1h", metrics);
 
   it("matches the contract", () => {
     expect(rows).toHaveLength(3);
@@ -132,7 +134,7 @@ describe("server_usage", () => {
 
   it("computes normalized cpu, disk and network stats", () => {
     expect(byName(rows, "server_name", "web-1")).toEqual({
-      server_id: 42, server_name: "web-1", status: "running", window: "1h",
+      project: "personal", server_id: 42, server_name: "web-1", status: "running", window: "1h",
       cpu_now_pct: 75, cpu_avg_pct: 50, cpu_max_pct: 75,
       disk_read_iops_avg: 20, disk_write_iops_avg: 2,
       disk_read_mbps_avg: 2, disk_write_mbps_avg: 0.5,
@@ -147,17 +149,17 @@ describe("server_usage", () => {
   it("returns null metrics for non-running servers", () => {
     const db = byName(rows, "server_name", "db-1");
     expect(db.status).toBe("off");
-    for (const c of COLUMNS.server_usage.slice(4)) expect(db[c]).toBeNull();
+    for (const c of COLUMNS.server_usage.slice(5)) expect(db[c]).toBeNull();
   });
 
   it("returns null metrics when a running server's metrics are unavailable", () => {
-    const r = usageRows(servers, "24h", new Map());
+    const r = usageRows("personal", servers, "24h", new Map());
     expect(byName(r, "server_name", "web-1").cpu_avg_pct).toBeNull();
   });
 });
 
 describe("server_timeseries", () => {
-  const rows = allTimeseriesRows(servers, metrics);
+  const rows = allTimeseriesRows("personal", servers, metrics);
 
   it("matches the contract and only includes running servers", () => {
     expect(rows).toHaveLength(5);
@@ -167,7 +169,7 @@ describe("server_timeseries", () => {
 
   it("aligns series by timestamp", () => {
     expect(rows[0]).toEqual({
-      server_id: 42, server_name: "web-1", ts: "2025-11-09T09:00:00Z",
+      project: "personal", server_id: 42, server_name: "web-1", ts: "2025-11-09T09:00:00Z",
       cpu_pct: 25, disk_iops: 11, net_in_mbps: 1, net_out_mbps: 0.1,
     });
     expect(rows[2].net_out_mbps).toBeNull();
@@ -176,14 +178,14 @@ describe("server_timeseries", () => {
 });
 
 describe("recent_actions", () => {
-  const rows = actionRows(actions, servers);
+  const rows = actionRows("personal", actions, servers);
   it("matches the contract", () => {
     expect(rows).toHaveLength(3);
     expectContract("recent_actions", rows);
   });
   it("maps errors, server names and timestamps", () => {
     expect(rows[1]).toEqual({
-      id: 12, command: "reboot_server", status: "error", progress: 100,
+      project: "personal", id: 12, command: "reboot_server", status: "error", progress: 100,
       started: "2026-11-08T10:00:00Z", finished: "2026-11-08T10:00:05Z",
       server_id: 42, server_name: "web-1", error_code: "action_failed", error_message: "Action failed",
     });
@@ -196,14 +198,14 @@ describe("recent_actions", () => {
 });
 
 describe("backups_and_snapshots", () => {
-  const rows = imageRows(images, servers, pricing, NOW);
+  const rows = imageRows("personal", images, servers, pricing, NOW);
   it("matches the contract", () => {
     expect(rows).toHaveLength(4);
     expectContract("backups_and_snapshots", rows);
   });
   it("prices snapshots per GB and leaves backups unpriced", () => {
     expect(byName(rows, "id", 9002)).toEqual({
-      id: 9002, type: "snapshot", description: "pre-upgrade", server_id: 42, server_name: "web-1",
+      project: "personal", id: 9002, type: "snapshot", description: "pre-upgrade", server_id: 42, server_name: "web-1",
       created: "2026-10-30T09:00:00Z", age_days: 10.13, size_gb: 4.5, disk_size_gb: 80,
       status: "available", protected: true, monthly_eur: 0.05,
     });
@@ -217,7 +219,7 @@ describe("backups_and_snapshots", () => {
 });
 
 describe("cost_breakdown", () => {
-  const rows = costRows({ servers, volumes, primaryIps, floatingIps, images, loadBalancers, pricing });
+  const rows = costRows("personal", { servers, volumes, primaryIps, floatingIps, images, loadBalancers, pricing });
 
   it("matches the contract with unique (category, name)", () => {
     expectContract("cost_breakdown", rows);
@@ -229,7 +231,7 @@ describe("cost_breakdown", () => {
   it("covers every billed resource once", () => {
     const get = (c: string, n: string) => rows.find((r) => r.category === c && r.name === n)!;
     expect(get("server", "web-1")).toEqual({
-      category: "server", name: "web-1", server_name: "web-1",
+      project: "personal", category: "server", name: "web-1", server_name: "web-1",
       monthly_eur_net: 7.99, monthly_eur_gross: 9.51, detail: "cpx22 in fsn1",
     });
     expect(get("backups", "web-1").monthly_eur_net).toBe(1.6);
@@ -252,14 +254,14 @@ describe("cost_breakdown", () => {
 });
 
 describe("security_overview", () => {
-  const rows = securityRows(servers, firewalls);
+  const rows = securityRows("personal", servers, firewalls);
   it("matches the contract", () => {
     expect(rows).toHaveLength(3);
     expectContract("security_overview", rows);
   });
   it("unions world-open inbound rules across firewalls", () => {
     expect(byName(rows, "server_name", "web-1")).toEqual({
-      server_id: 42, server_name: "web-1", has_firewall: true, firewall_names: "web, wireguard",
+      project: "personal", server_id: 42, server_name: "web-1", has_firewall: true, firewall_names: "web, wireguard",
       open_inbound_ports: "22, 80, 443, 51820-51830", ssh_open_to_world: true, icmp_open: true,
       delete_protected: true, backups_enabled: true, rescue_enabled: false,
     });
@@ -278,8 +280,29 @@ describe("security_overview", () => {
     const fw: Firewall[] = [{ id: 42, name: "wide", rules: [
       { direction: "in", protocol: "tcp", port: "1-1024", source_ips: ["::/0"], destination_ips: [] },
     ] }];
-    const [r] = securityRows([servers[2]].map((s) => ({ ...s, public_net: { ...s.public_net, firewalls: [{ id: 42, status: "applied" }] } })), fw);
+    const [r] = securityRows("personal", [servers[2]].map((s) => ({ ...s, public_net: { ...s.public_net, firewalls: [{ id: 42, status: "applied" }] } })), fw);
     expect(r.ssh_open_to_world).toBe(true);
     expect(r.open_inbound_ports).toBe("1-1024");
+  });
+});
+
+describe("multi-project merging", () => {
+  it("recent_actions: newest first across projects, limit applied to the merged list", () => {
+    const personal = actionRows("personal", actions, servers);
+    const we4water = actionRows("we4water", fixture("we4water/actions").actions, fixture("we4water/servers").servers);
+    const merged = mergeActions([...personal, ...we4water], 3);
+    expect(merged.map((r) => [r.project, r.id])).toEqual([
+      ["we4water", 20], ["personal", 13], ["personal", 12],
+    ]);
+    expect(merged[0].server_name).toBe("sensor-gw");
+  });
+
+  it("cost_breakdown: (project, category, name) is unique across projects", () => {
+    const empty = { volumes: [], primaryIps: [], floatingIps: [], images: [], loadBalancers: [], pricing };
+    const a = costRows("personal", { ...empty, servers });
+    const b = costRows("we4water", { ...empty, servers: servers.slice(0, 1) }); // same server name in another project
+    const keys = [...a, ...b].map((r) => `${r.project}|${r.category}|${r.name}`);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(b.find((r) => r.category === "server")!.name).toBe("web-1"); // no cross-project suffixing
   });
 });

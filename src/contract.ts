@@ -1,5 +1,6 @@
 // The tool contract. A dashboard is built against these exact names and
 // column orders, so treat every change here as a breaking change.
+// Every row starts with "project": the configured Hetzner project name.
 
 export const WINDOWS = ["1h", "24h", "7d", "30d"] as const;
 export type Window = (typeof WINDOWS)[number];
@@ -14,7 +15,7 @@ export const WINDOW_SPEC: Record<Window, { seconds: number; step: number }> = {
 
 export const COLUMNS = {
   list_servers: [
-    "id", "name", "status", "type", "type_description", "cpu_type", "architecture",
+    "project", "id", "name", "status", "type", "type_description", "cpu_type", "architecture",
     "cores", "memory_gb", "disk_gb", "location", "city", "country", "datacenter",
     "ipv4", "ipv6", "image", "os_flavor", "created", "age_days", "backups_enabled",
     "backup_window", "delete_protected", "rebuild_protected", "rescue_enabled", "locked",
@@ -23,27 +24,27 @@ export const COLUMNS = {
     "console_url",
   ],
   server_usage: [
-    "server_id", "server_name", "status", "window", "cpu_now_pct", "cpu_avg_pct",
+    "project", "server_id", "server_name", "status", "window", "cpu_now_pct", "cpu_avg_pct",
     "cpu_max_pct", "disk_read_iops_avg", "disk_write_iops_avg", "disk_read_mbps_avg",
     "disk_write_mbps_avg", "net_in_mbps_avg", "net_out_mbps_avg", "net_in_gb_total",
     "net_out_gb_total", "points",
   ],
   server_timeseries: [
-    "server_id", "server_name", "ts", "cpu_pct", "disk_iops", "net_in_mbps", "net_out_mbps",
+    "project", "server_id", "server_name", "ts", "cpu_pct", "disk_iops", "net_in_mbps", "net_out_mbps",
   ],
   recent_actions: [
-    "id", "command", "status", "progress", "started", "finished", "server_id",
+    "project", "id", "command", "status", "progress", "started", "finished", "server_id",
     "server_name", "error_code", "error_message",
   ],
   backups_and_snapshots: [
-    "id", "type", "description", "server_id", "server_name", "created", "age_days",
+    "project", "id", "type", "description", "server_id", "server_name", "created", "age_days",
     "size_gb", "disk_size_gb", "status", "protected", "monthly_eur",
   ],
   cost_breakdown: [
-    "category", "name", "server_name", "monthly_eur_net", "monthly_eur_gross", "detail",
+    "project", "category", "name", "server_name", "monthly_eur_net", "monthly_eur_gross", "detail",
   ],
   security_overview: [
-    "server_id", "server_name", "has_firewall", "firewall_names", "open_inbound_ports",
+    "project", "server_id", "server_name", "has_firewall", "firewall_names", "open_inbound_ports",
     "ssh_open_to_world", "icmp_open", "delete_protected", "backups_enabled", "rescue_enabled",
   ],
 } as const;
