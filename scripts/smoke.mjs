@@ -254,7 +254,7 @@ try {
     const r = await fetch(`${app.base}/`);
     assert.equal(r.status, 200);
     const html = await r.text();
-    assert.ok(html.includes("Free, easy, vibe-coded, MCP for"), "title missing");
+    assert.ok(html.includes("Free, easy, vibe-coded MCP for"), "title missing");
     assert.ok(html.includes("How it works"), "explanation missing");
   });
 
